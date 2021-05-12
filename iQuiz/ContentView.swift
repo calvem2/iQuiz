@@ -79,11 +79,11 @@ struct ContentView: View {
                                 
                         }
                     }
-                }.navigationBarTitle("back")
+                }.navigationBarTitle("quizzes")
             }
             .onAppear(perform: loadData)
             .navigationBarTitleDisplayMode(.inline)
-            .navigationTitle("iQuiz")
+            .navigationBarTitle("iQuiz")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
