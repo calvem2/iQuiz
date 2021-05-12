@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct QuizView: View {
-    @State private var questions: [Question]
+    let questions: [Question]
     @State private var currQ: Int = 0
     @State private var scene = "question"
     @State private var selected = 0

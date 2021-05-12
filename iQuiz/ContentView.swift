@@ -99,7 +99,7 @@ struct ContentView: View {
                 }
             }
             .foregroundColor(.purple)
-        }        
+        }
     }
 }
 
