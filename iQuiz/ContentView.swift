@@ -15,8 +15,8 @@ struct Quiz: Identifiable {
     public var questions: [Question] = []
 }
 
-struct Question {
-//    public var id = UUID()
+struct Question: Identifiable {
+    public var id = UUID()
     public var text: String = ""
     public var answer: Int = 0
     public var answers: [String] = []
@@ -37,6 +37,7 @@ struct ContentView: View {
                     // we have good data – go back to the main thread
                     DispatchQueue.main.async {
                         let resultArray = decodedResponse as! NSMutableArray
+                        quizzes.removeAll()
                         for res in resultArray as [AnyObject] {
                             var quiz = Quiz()
                             quiz.title = res["title"] as! String
@@ -51,7 +52,7 @@ struct ContentView: View {
                                 question.answers = q["answers"] as! [String]
                                 quiz.questions.append(question)
                             }
-                            quizzes.append(quiz)
+                            self.quizzes.append(quiz)
                         }
                     }
                     return
@@ -65,18 +66,20 @@ struct ContentView: View {
     
     var body: some View {
         NavigationView {
-            
             List(quizzes) { quiz in
-                HStack {
-                    Image(systemName: "bolt")
-                    VStack(alignment: .leading) {
-                        Text(quiz.title)
-                            .fontWeight(.semibold)
-                        Text(quiz.desc)
-                            .font(.subheadline)
-                            .foregroundColor(Color.gray)
+                NavigationLink(destination: QuizView(questions: quiz.questions)) {
+                    HStack {
+                        Image(systemName: "bolt")
+                        VStack(alignment: .leading) {
+                            Text(quiz.title)
+                                .fontWeight(.semibold)
+                            Text(quiz.desc)
+                                .font(.subheadline)
+                                .foregroundColor(Color.gray)
+                                
+                        }
                     }
-                }
+                }.navigationBarTitle("back")
             }
             .onAppear(perform: loadData)
             .navigationBarTitleDisplayMode(.inline)
@@ -96,7 +99,7 @@ struct ContentView: View {
                 }
             }
             .foregroundColor(.purple)
-        }
+        }        
     }
 }
 
