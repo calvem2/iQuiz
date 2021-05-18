@@ -7,6 +7,8 @@
 
 import SwiftUI
 import Foundation
+import Network
+
 
 struct Quiz: Identifiable {
     public var id = UUID()
@@ -23,37 +25,68 @@ struct Question: Identifiable {
 }
 
 struct ContentView: View {
-    @State private var alertShown = false
+    
+    @State private var showingPopover = false
     @State private var quizzes = [Quiz]()
+    @State private var qURL = "https://tednewardsandbox.site44.com/questions.json"
+    let monitor = NWPathMonitor()
 
+    init() {
+        monitor.pathUpdateHandler = { path in
+            if path.status == .satisfied {
+                print("We're connected!")
+            } else {
+                print("No connection.")
+            }
+        }
+        let queue = DispatchQueue(label: "Monitor")
+        monitor.start(queue: queue)
+    }
+    
+    func isConnected() -> Bool {
+        return monitor.currentPath.status == .satisfied
+    }
+
+    // load initial data when app launched
+    func onMenuAppear() {
+        if (quizzes.count == 0) {
+            parseQuizzes()
+        }
+        
+        if (quizzes.count == 0) {
+            loadData()
+        }
+    }
+    
+    // fetch quiz data
     func loadData() {
-        guard let url = URL(string: "https://tednewardsandbox.site44.com/questions.json") else {
+        // check connectivity
+        if (!isConnected()) {
+            // TODO: set error message
+            print("not connected")
+            return
+        }
+        
+        guard let url = URL(string: qURL) else {
             print("Invalid URL")
             return
         }
+        
         URLSession.shared.dataTask(with: url) { data, response, error in
             if let data = data {
                 if let decodedResponse = try? JSONSerialization.jsonObject(with: data, options: [.mutableContainers]) {
                     // we have good data – go back to the main thread
                     DispatchQueue.main.async {
-                        let resultArray = decodedResponse as! NSMutableArray
-                        quizzes.removeAll()
-                        for res in resultArray as [AnyObject] {
-                            var quiz = Quiz()
-                            quiz.title = res["title"] as! String
-                            quiz.desc = res["desc"] as! String
-                            
-                            // parse questions
-                            let questions = res["questions"] as! [[String: Any]]
-                            for q in questions {
-                                var question = Question()
-                                question.text = q["text"] as! String
-                                question.answer = Int(q["answer"] as! String)!
-                                question.answers = q["answers"] as! [String]
-                                quiz.questions.append(question)
-                            }
-                            self.quizzes.append(quiz)
+                        let results = decodedResponse as! NSMutableArray
+                        // store JSON in local files
+                        let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("questions.json")
+                        do {
+                            try results.write(to: path)
+                        } catch {
+                            print(error.localizedDescription)
                         }
+                        print("loading data")
+                        parseQuizzes()
                     }
                     return
                 }
@@ -62,6 +95,37 @@ struct ContentView: View {
             print("Fetch failed: \(error?.localizedDescription ?? "Unknown error")")
         }.resume()
         
+    }
+    
+    // populate quizzes with stored JSON data
+    func parseQuizzes() {
+        print("attempting to parse")
+        // read json file from storage
+        let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("questions.json")
+        let questions = NSMutableArray(contentsOf: path)
+        if (questions == nil) {
+            return
+        }
+        
+        print("file founnd...parsing")
+        
+        quizzes.removeAll()
+        for res in questions! as [AnyObject] {
+            var quiz = Quiz()
+            quiz.title = res["title"] as! String
+            quiz.desc = res["desc"] as! String
+            
+            // parse questions
+            let questions = res["questions"] as! [[String: Any]]
+            for q in questions {
+                var question = Question()
+                question.text = q["text"] as! String
+                question.answer = Int(q["answer"] as! String)!
+                question.answers = q["answers"] as! [String]
+                quiz.questions.append(question)
+            }
+            self.quizzes.append(quiz)
+        }
     }
     
     var body: some View {
@@ -81,20 +145,41 @@ struct ContentView: View {
                     }
                 }.navigationBarTitle("quizzes")
             }
-            .onAppear(perform: loadData)
+            .onAppear(perform: onMenuAppear)
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarTitle("iQuiz")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        self.alertShown = true
+                        self.showingPopover = true
                     }, label: {
                         Image(systemName: "gear")
                             .foregroundColor(.blue)
                         Text("Settings")
                             .foregroundColor(.blue)
-                    }).alert(isPresented: $alertShown) { () -> Alert in
-                        Alert(title: Text("Settings"), message: Text("Settings go here"), dismissButton: .default(Text("Ok")))
+                    }).popover(isPresented: $showingPopover) {
+                        VStack {
+                            Text("Settings")
+                                .font(.headline)
+                                .padding(.vertical)
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                TextField("example.com/questions.json", text: $qURL)
+                                    .padding(/*@START_MENU_TOKEN@*/.all/*@END_MENU_TOKEN@*/)
+                                    .border(/*@START_MENU_TOKEN@*/Color.blue/*@END_MENU_TOKEN@*/, width: /*@START_MENU_TOKEN@*/1/*@END_MENU_TOKEN@*/)
+                                Spacer()
+                            }
+                            Button(action: {
+                                loadData()
+                            }, label: {
+                                Text("check now")
+                                    .foregroundColor(.blue)
+                            })
+                            Spacer()
+                        }
+                        
+                        
                     }
                 }
             }
