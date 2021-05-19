@@ -30,8 +30,9 @@ struct ContentView: View {
     @State private var showingNetAlert = false
     @State private var showingDownAlert = false
     @State private var quizzes = [Quiz]()
+    @State private var inputText = ""
     // Store settings in app settings
-    @AppStorage("qURL") private var qURL = "https://tednewardsandbox.site44.com/questions.json"
+    @AppStorage("url") private var qURL = "https://tednewardsandbox.site44.com/questions.json"
     
     let monitor = NWPathMonitor()
 
@@ -143,7 +144,6 @@ struct ContentView: View {
                             Text(quiz.desc)
                                 .font(.subheadline)
                                 .foregroundColor(Color.gray)
-                                
                         }
                     }
                 }.navigationBarTitle("quizzes")
@@ -168,7 +168,7 @@ struct ContentView: View {
                             Spacer()
                             HStack {
                                 Spacer()
-                                TextField("example.com/questions.json", text: $qURL)
+                                TextField("example.com/questions.json", text: $inputText)
                                     .padding(/*@START_MENU_TOKEN@*/.all/*@END_MENU_TOKEN@*/)
                                     .border(/*@START_MENU_TOKEN@*/Color.blue/*@END_MENU_TOKEN@*/, width: /*@START_MENU_TOKEN@*/1/*@END_MENU_TOKEN@*/)
                                 Spacer()
@@ -177,6 +177,8 @@ struct ContentView: View {
                                 Alert(title: Text("Network Unavailable"), message: Text("Could not download file"), dismissButton: .default(Text("Ok")))
                             }
                             Button(action: {
+                                // Store settings in app settings
+                                UserDefaults.standard.set(self.inputText, forKey: "url")
                                 loadData()
                             }, label: {
                                 Text("check now")
