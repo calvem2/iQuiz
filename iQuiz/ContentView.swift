@@ -27,11 +27,16 @@ struct Question: Identifiable {
 struct ContentView: View {
     
     @State private var showingPopover = false
+    @State private var showingNetAlert = false
+    @State private var showingDownAlert = false
     @State private var quizzes = [Quiz]()
-    @State private var qURL = "https://tednewardsandbox.site44.com/questions.json"
+    // Store settings in app settings
+    @AppStorage("qURL") private var qURL = "https://tednewardsandbox.site44.com/questions.json"
+    
     let monitor = NWPathMonitor()
 
     init() {
+        // monitor nentwork connectivity
         monitor.pathUpdateHandler = { path in
             if path.status == .satisfied {
                 print("We're connected!")
@@ -39,7 +44,7 @@ struct ContentView: View {
                 print("No connection.")
             }
         }
-        let queue = DispatchQueue(label: "Monitor")
+        let queue = DispatchQueue.global(qos: .background)
         monitor.start(queue: queue)
     }
     
@@ -62,13 +67,13 @@ struct ContentView: View {
     func loadData() {
         // check connectivity
         if (!isConnected()) {
-            // TODO: set error message
+            showingNetAlert = true
             print("not connected")
             return
         }
         
         guard let url = URL(string: qURL) else {
-            print("Invalid URL")
+            showingDownAlert = true
             return
         }
         
@@ -85,13 +90,13 @@ struct ContentView: View {
                         } catch {
                             print(error.localizedDescription)
                         }
-                        print("loading data")
                         parseQuizzes()
                     }
                     return
                 }
             }
 
+            showingDownAlert = true
             print("Fetch failed: \(error?.localizedDescription ?? "Unknown error")")
         }.resume()
         
@@ -99,16 +104,14 @@ struct ContentView: View {
     
     // populate quizzes with stored JSON data
     func parseQuizzes() {
-        print("attempting to parse")
-        // read json file from storage
+        // read json file from local storage
         let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("questions.json")
         let questions = NSMutableArray(contentsOf: path)
         if (questions == nil) {
+            showingDownAlert = true
             return
         }
-        
-        print("file founnd...parsing")
-        
+                
         quizzes.removeAll()
         for res in questions! as [AnyObject] {
             var quiz = Quiz()
@@ -170,17 +173,23 @@ struct ContentView: View {
                                     .border(/*@START_MENU_TOKEN@*/Color.blue/*@END_MENU_TOKEN@*/, width: /*@START_MENU_TOKEN@*/1/*@END_MENU_TOKEN@*/)
                                 Spacer()
                             }
+                            .alert(isPresented: $showingNetAlert) {
+                                Alert(title: Text("Network Unavailable"), message: Text("Could not download file"), dismissButton: .default(Text("Ok")))
+                            }
                             Button(action: {
                                 loadData()
                             }, label: {
                                 Text("check now")
                                     .foregroundColor(.blue)
                             })
+                            .alert(isPresented: $showingDownAlert) {
+                                    Alert(title: Text("Download Failed"), message: Text("Something went wrong!"), dismissButton: .default(Text("Ok")))
+                            }
                             Spacer()
                         }
                         
-                        
                     }
+                    
                 }
             }
             .foregroundColor(.purple)
